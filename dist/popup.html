@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dark Mode For All</title>
+  <script type="module" crossorigin src="/popup.js"></script>
+  <link rel="stylesheet" crossorigin href="/popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <h1>Dark Mode For All</h1>
+      <div class="toggle-container">
+        <label class="toggle-switch">
+          <input type="checkbox" id="darkModeToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">Enable Dark Mode</span>
+      </div>
+    </header>
+
+    <main class="popup-content">
+      <section class="settings-section">
+        <h2>Darkness Level</h2>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="intensity" value="light">
+            <span class="radio-custom"></span>
+            <span class="radio-label">Light</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="intensity" value="medium">
+            <span class="radio-custom"></span>
+            <span class="radio-label">Medium</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="intensity" value="dark" checked>
+            <span class="radio-custom"></span>
+            <span class="radio-label">Dark</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="intensity" value="very-dark">
+            <span class="radio-custom"></span>
+            <span class="radio-label">Very Dark</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2>Accessibility</h2>
+        <div class="checkbox-group">
+          <label class="checkbox-option">
+            <input type="checkbox" id="highContrast">
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-label">High Contrast Mode</span>
+          </label>
+          <label class="checkbox-option">
+            <input type="checkbox" id="preserveImages" checked>
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-label">Preserve Image Colors</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2>Font Size</h2>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="fontSize" value="normal" checked>
+            <span class="radio-custom"></span>
+            <span class="radio-label">Normal</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="fontSize" value="large">
+            <span class="radio-custom"></span>
+            <span class="radio-label">Large</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="fontSize" value="extra-large">
+            <span class="radio-custom"></span>
+            <span class="radio-label">Extra Large</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2>Website Whitelist</h2>
+        <div class="whitelist-container">
+          <div class="whitelist-input">
+            <input type="text" id="whitelistInput" placeholder="Enter website domain (e.g., google.com)">
+            <button id="addWhitelist" class="btn btn-primary">Add</button>
+          </div>
+          <div id="whitelistItems" class="whitelist-items">
+            <!-- Whitelist items will be populated here -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="popup-footer">
+      <button id="resetSettings" class="btn btn-secondary">Reset to Defaults</button>
+      <div class="version">v1.0.0</div>
+    </footer>
+  </div>
+
+</body>
+</html> 
