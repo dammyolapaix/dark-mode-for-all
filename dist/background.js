@@ -35,7 +35,7 @@ var __async = (__this, __arguments, generator) => {
     step((generator = generator.apply(__this, __arguments)).next());
   });
 };
-class StorageManager {
+class BackgroundStorageManager {
   static getSettings() {
     return __async(this, null, function* () {
       try {
@@ -85,17 +85,6 @@ class StorageManager {
       }
     });
   }
-  static removeWebsiteOverride(url) {
-    return __async(this, null, function* () {
-      try {
-        const overrides = yield this.getWebsiteOverrides();
-        const filteredOverrides = overrides.filter((o) => o.url !== url);
-        yield chrome.storage.sync.set({ websiteOverrides: filteredOverrides });
-      } catch (error) {
-        console.error("Error removing website override:", error);
-      }
-    });
-  }
   static isWhitelisted(url) {
     return __async(this, null, function* () {
       try {
@@ -113,32 +102,8 @@ class StorageManager {
       }
     });
   }
-  static addToWhitelist(pattern) {
-    return __async(this, null, function* () {
-      try {
-        const settings = yield this.getSettings();
-        if (!settings.whitelist.includes(pattern)) {
-          settings.whitelist.push(pattern);
-          yield this.saveSettings(settings);
-        }
-      } catch (error) {
-        console.error("Error adding to whitelist:", error);
-      }
-    });
-  }
-  static removeFromWhitelist(pattern) {
-    return __async(this, null, function* () {
-      try {
-        const settings = yield this.getSettings();
-        settings.whitelist = settings.whitelist.filter((p) => p !== pattern);
-        yield this.saveSettings(settings);
-      } catch (error) {
-        console.error("Error removing from whitelist:", error);
-      }
-    });
-  }
 }
-__publicField(StorageManager, "DEFAULT_SETTINGS", {
+__publicField(BackgroundStorageManager, "DEFAULT_SETTINGS", {
   enabled: true,
   intensity: "dark",
   preserveImages: true,
@@ -163,20 +128,20 @@ class BackgroundManager {
       try {
         switch (message.type) {
           case "GET_SETTINGS":
-            const settings = yield StorageManager.getSettings();
+            const settings = yield BackgroundStorageManager.getSettings();
             sendResponse({ settings });
             break;
           case "SAVE_SETTINGS":
-            yield StorageManager.saveSettings(message.settings);
+            yield BackgroundStorageManager.saveSettings(message.settings);
             yield this.notifyContentScripts(message.settings);
             sendResponse({ success: true });
             break;
           case "GET_WEBSITE_OVERRIDES":
-            const overrides = yield StorageManager.getWebsiteOverrides();
+            const overrides = yield BackgroundStorageManager.getWebsiteOverrides();
             sendResponse({ overrides });
             break;
           case "SAVE_WEBSITE_OVERRIDE":
-            yield StorageManager.saveWebsiteOverride(message.override);
+            yield BackgroundStorageManager.saveWebsiteOverride(message.override);
             sendResponse({ success: true });
             break;
           case "TOGGLE_DARK_MODE":
@@ -205,7 +170,7 @@ class BackgroundManager {
           fontSize: "normal",
           whitelist: []
         };
-        yield StorageManager.saveSettings(defaultSettings);
+        yield BackgroundStorageManager.saveSettings(defaultSettings);
         chrome.tabs.create({
           url: chrome.runtime.getURL("welcome.html")
         });
@@ -215,8 +180,8 @@ class BackgroundManager {
   handleTabUpdate(tabId, changeInfo, tab) {
     return __async(this, null, function* () {
       if (changeInfo.status === "complete" && tab.url) {
-        const settings = yield StorageManager.getSettings();
-        const isWhitelisted = yield StorageManager.isWhitelisted(tab.url);
+        const settings = yield BackgroundStorageManager.getSettings();
+        const isWhitelisted = yield BackgroundStorageManager.isWhitelisted(tab.url);
         if (settings.enabled && !isWhitelisted) {
           try {
             yield chrome.scripting.executeScript({
@@ -232,7 +197,7 @@ class BackgroundManager {
   handleActionClick(tab) {
     return __async(this, null, function* () {
       if (tab.id) {
-        const settings = yield StorageManager.getSettings();
+        const settings = yield BackgroundStorageManager.getSettings();
         const newEnabled = !settings.enabled;
         yield this.toggleDarkMode(newEnabled);
         this.updateActionIcon(newEnabled);
@@ -241,9 +206,9 @@ class BackgroundManager {
   }
   toggleDarkMode(enabled) {
     return __async(this, null, function* () {
-      const settings = yield StorageManager.getSettings();
+      const settings = yield BackgroundStorageManager.getSettings();
       settings.enabled = enabled;
-      yield StorageManager.saveSettings(settings);
+      yield BackgroundStorageManager.saveSettings(settings);
       yield this.notifyContentScripts(settings);
       this.updateActionIcon(enabled);
     });

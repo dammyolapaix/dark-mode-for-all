@@ -287,11 +287,11 @@ class DarkModeManager {
     }
   }
 
-  private setupObserver(): void {
+    private setupObserver(): void {
     // Watch for dynamic content changes
     this.observer = new MutationObserver((mutations) => {
       let shouldUpdate = false;
-
+      
       mutations.forEach((mutation) => {
         if (mutation.type === "childList") {
           mutation.addedNodes.forEach((node) => {
@@ -311,10 +311,37 @@ class DarkModeManager {
       }
     });
 
-    this.observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
+    // Only observe if document.body exists
+    if (document.body) {
+      this.observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+    } else {
+      // Wait for body to be available
+      const bodyObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === "childList") {
+            mutation.addedNodes.forEach((node) => {
+              if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName === 'BODY') {
+                if (this.observer && document.body) {
+                  this.observer.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                  });
+                }
+                bodyObserver.disconnect();
+              }
+            });
+          }
+        });
+      });
+      
+      bodyObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+    }
   }
 
   private needsStyling(element: Element): boolean {
@@ -387,22 +414,26 @@ class DarkModeManager {
   }
 }
 
-// Initialize dark mode manager
-const darkModeManager = new DarkModeManager();
+// Initialize dark mode manager only once
+if (!(window as any).darkModeManager) {
+  (window as any).darkModeManager = new DarkModeManager();
 
-// Listen for messages from popup or background script
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "UPDATE_SETTINGS") {
-    darkModeManager.updateSettings(message.settings);
-    sendResponse({ success: true });
-  } else if (message.type === "TOGGLE_DARK_MODE") {
-    darkModeManager.updateSettings({ enabled: message.enabled });
-    sendResponse({ success: true });
-  }
-  return true;
-});
+  // Listen for messages from popup or background script
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.type === "UPDATE_SETTINGS") {
+      (window as any).darkModeManager.updateSettings(message.settings);
+      sendResponse({ success: true });
+    } else if (message.type === "TOGGLE_DARK_MODE") {
+      (window as any).darkModeManager.updateSettings({ enabled: message.enabled });
+      sendResponse({ success: true });
+    }
+    return true;
+  });
 
-// Cleanup on page unload
-window.addEventListener("beforeunload", () => {
-  darkModeManager.destroy();
-});
+  // Cleanup on page unload
+  window.addEventListener("beforeunload", () => {
+    if ((window as any).darkModeManager) {
+      (window as any).darkModeManager.destroy();
+    }
+  });
+}

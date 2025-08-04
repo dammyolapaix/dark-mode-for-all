@@ -134,8 +134,8 @@ class ThemeGenerator {
   }
   static generateFontSizeCSS(fontSize) {
     const sizes = {
-      "normal": "1rem",
-      "large": "1.2rem",
+      normal: "1rem",
+      large: "1.2rem",
       "extra-large": "1.5rem"
     };
     return `
@@ -146,7 +146,7 @@ class ThemeGenerator {
   }
 }
 __publicField(ThemeGenerator, "THEME_COLORS", {
-  "light": {
+  light: {
     background: "#f8f9fa",
     text: "#212529",
     link: "#007bff",
@@ -154,7 +154,7 @@ __publicField(ThemeGenerator, "THEME_COLORS", {
     shadow: "rgba(0, 0, 0, 0.1)",
     highlight: "#e3f2fd"
   },
-  "medium": {
+  medium: {
     background: "#343a40",
     text: "#f8f9fa",
     link: "#6ea8fe",
@@ -162,7 +162,7 @@ __publicField(ThemeGenerator, "THEME_COLORS", {
     shadow: "rgba(0, 0, 0, 0.3)",
     highlight: "#495057"
   },
-  "dark": {
+  dark: {
     background: "#212529",
     text: "#f8f9fa",
     link: "#4dabf7",
@@ -304,10 +304,34 @@ class DarkModeManager {
         this.updateStyles();
       }
     });
-    this.observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
+    if (document.body) {
+      this.observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    } else {
+      const bodyObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === "childList") {
+            mutation.addedNodes.forEach((node) => {
+              if (node.nodeType === Node.ELEMENT_NODE && node.tagName === "BODY") {
+                if (this.observer && document.body) {
+                  this.observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                  });
+                }
+                bodyObserver.disconnect();
+              }
+            });
+          }
+        });
+      });
+      bodyObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+      });
+    }
   }
   needsStyling(element) {
     const selectors = [
@@ -369,17 +393,21 @@ class DarkModeManager {
     this.removeDarkMode();
   }
 }
-const darkModeManager = new DarkModeManager();
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "UPDATE_SETTINGS") {
-    darkModeManager.updateSettings(message.settings);
-    sendResponse({ success: true });
-  } else if (message.type === "TOGGLE_DARK_MODE") {
-    darkModeManager.updateSettings({ enabled: message.enabled });
-    sendResponse({ success: true });
-  }
-  return true;
-});
-window.addEventListener("beforeunload", () => {
-  darkModeManager.destroy();
-});
+if (!window.darkModeManager) {
+  window.darkModeManager = new DarkModeManager();
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.type === "UPDATE_SETTINGS") {
+      window.darkModeManager.updateSettings(message.settings);
+      sendResponse({ success: true });
+    } else if (message.type === "TOGGLE_DARK_MODE") {
+      window.darkModeManager.updateSettings({ enabled: message.enabled });
+      sendResponse({ success: true });
+    }
+    return true;
+  });
+  window.addEventListener("beforeunload", () => {
+    if (window.darkModeManager) {
+      window.darkModeManager.destroy();
+    }
+  });
+}

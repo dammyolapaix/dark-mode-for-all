@@ -1,5 +1,77 @@
-import { StorageManager } from "../utils/storage";
-import { DarkModeSettings } from "../types";
+// Include storage manager directly to avoid import issues
+class BackgroundStorageManager {
+  private static readonly DEFAULT_SETTINGS = {
+    enabled: true,
+    intensity: "dark",
+    preserveImages: true,
+    highContrast: false,
+    fontSize: "normal",
+    whitelist: [],
+  };
+
+  static async getSettings(): Promise<any> {
+    try {
+      const result = await chrome.storage.sync.get("darkModeSettings");
+      return { ...this.DEFAULT_SETTINGS, ...result.darkModeSettings };
+    } catch (error) {
+      console.error("Error getting settings:", error);
+      return this.DEFAULT_SETTINGS;
+    }
+  }
+
+  static async saveSettings(settings: any): Promise<void> {
+    try {
+      const currentSettings = await this.getSettings();
+      const newSettings = { ...currentSettings, ...settings };
+      await chrome.storage.sync.set({ darkModeSettings: newSettings });
+    } catch (error) {
+      console.error("Error saving settings:", error);
+    }
+  }
+
+  static async getWebsiteOverrides(): Promise<any[]> {
+    try {
+      const result = await chrome.storage.sync.get("websiteOverrides");
+      return result.websiteOverrides || [];
+    } catch (error) {
+      console.error("Error getting website overrides:", error);
+      return [];
+    }
+  }
+
+  static async saveWebsiteOverride(override: any): Promise<void> {
+    try {
+      const overrides = await this.getWebsiteOverrides();
+      const existingIndex = overrides.findIndex((o) => o.url === override.url);
+      
+      if (existingIndex >= 0) {
+        overrides[existingIndex] = override;
+      } else {
+        overrides.push(override);
+      }
+      
+      await chrome.storage.sync.set({ websiteOverrides: overrides });
+    } catch (error) {
+      console.error("Error saving website override:", error);
+    }
+  }
+
+  static async isWhitelisted(url: string): Promise<boolean> {
+    try {
+      const settings = await this.getSettings();
+      return settings.whitelist.some((pattern: string) => {
+        if (pattern.startsWith("*.")) {
+          const domain = pattern.slice(2);
+          return url.includes(domain);
+        }
+        return url.includes(pattern);
+      });
+    } catch (error) {
+      console.error("Error checking whitelist:", error);
+      return false;
+    }
+  }
+}
 
 class BackgroundManager {
   constructor() {
@@ -28,23 +100,23 @@ class BackgroundManager {
     try {
       switch (message.type) {
         case "GET_SETTINGS":
-          const settings = await StorageManager.getSettings();
+          const settings = await BackgroundStorageManager.getSettings();
           sendResponse({ settings });
           break;
 
         case "SAVE_SETTINGS":
-          await StorageManager.saveSettings(message.settings);
+          await BackgroundStorageManager.saveSettings(message.settings);
           await this.notifyContentScripts(message.settings);
           sendResponse({ success: true });
           break;
 
         case "GET_WEBSITE_OVERRIDES":
-          const overrides = await StorageManager.getWebsiteOverrides();
+          const overrides = await BackgroundStorageManager.getWebsiteOverrides();
           sendResponse({ overrides });
           break;
 
         case "SAVE_WEBSITE_OVERRIDE":
-          await StorageManager.saveWebsiteOverride(message.override);
+          await BackgroundStorageManager.saveWebsiteOverride(message.override);
           sendResponse({ success: true });
           break;
 
@@ -69,7 +141,7 @@ class BackgroundManager {
   ): Promise<void> {
     if (details.reason === "install") {
       // Set default settings on first install
-      const defaultSettings: DarkModeSettings = {
+      const defaultSettings: any = {
         enabled: true,
         intensity: "dark",
         preserveImages: true,
@@ -78,7 +150,7 @@ class BackgroundManager {
         whitelist: [],
       };
 
-      await StorageManager.saveSettings(defaultSettings);
+      await BackgroundStorageManager.saveSettings(defaultSettings);
 
       // Open welcome page
       chrome.tabs.create({
@@ -94,8 +166,8 @@ class BackgroundManager {
   ): Promise<void> {
     if (changeInfo.status === "complete" && tab.url) {
       // Check if dark mode should be applied to this tab
-      const settings = await StorageManager.getSettings();
-      const isWhitelisted = await StorageManager.isWhitelisted(tab.url);
+      const settings = await BackgroundStorageManager.getSettings();
+      const isWhitelisted = await BackgroundStorageManager.isWhitelisted(tab.url);
 
       if (settings.enabled && !isWhitelisted) {
         // Inject content script if not already injected
@@ -114,7 +186,7 @@ class BackgroundManager {
   private async handleActionClick(tab: chrome.tabs.Tab): Promise<void> {
     if (tab.id) {
       // Toggle dark mode for the current tab
-      const settings = await StorageManager.getSettings();
+      const settings = await BackgroundStorageManager.getSettings();
       const newEnabled = !settings.enabled;
 
       await this.toggleDarkMode(newEnabled);
@@ -125,16 +197,16 @@ class BackgroundManager {
   }
 
   private async toggleDarkMode(enabled: boolean): Promise<void> {
-    const settings = await StorageManager.getSettings();
+        const settings = await BackgroundStorageManager.getSettings();
     settings.enabled = enabled;
-
-    await StorageManager.saveSettings(settings);
+    
+    await BackgroundStorageManager.saveSettings(settings);
     await this.notifyContentScripts(settings);
     this.updateActionIcon(enabled);
   }
 
   private async notifyContentScripts(
-    settings: DarkModeSettings
+    settings: any
   ): Promise<void> {
     try {
       const tabs = await chrome.tabs.query({});
